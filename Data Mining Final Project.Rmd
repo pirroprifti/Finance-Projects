@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: "Data Mining Group Project"
+output: "Data Mining Final Project"
 ---
 ```{r}
 #Loading in data, packages, and summary statistics
@@ -91,7 +91,6 @@ as.numeric(auc3@y.values)
 
 ```
 
-
 ```{r}
 #Model Optimization
 
@@ -109,6 +108,3 @@ new_Specificity3 = new_matrix3[1, 1] / sum(new_matrix3[1, ])
 new_Sensitivity3 = new_matrix3[2, 2] / sum(new_matrix3[2, ])
 
 ```
-
-
-
