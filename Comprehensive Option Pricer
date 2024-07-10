@@ -1,0 +1,105 @@
+# Comprehensive Option Pricer
+# 3 Methods: Black Scholes, Binomial, and Monte Carlo
+
+# Packages
+import numpy as np
+import math 
+from scipy.stats import norm
+import pandas as pd
+from random import random
+from statistics import mean
+
+# Black Scholes Call or Put Model with Greeks
+# DO IMPLIED VOLATILITY AND VOL SURFACE
+def BSM(S, K, T, Sigma, R, Type):
+
+    # Inputs
+    d1 = (np.log(S/K)+(R+((Sigma**2)/2))*T)/(Sigma*math.sqrt(T))
+    d2 = d1 - (Sigma*math.sqrt(T))
+
+    # For Call 
+    if Type == "Call":    
+        C = norm.cdf(d1)*S - norm.cdf(d2)*K*math.exp(-R*T)
+
+    # Call Greeks
+        delta = norm.cdf(d1)
+        gamma = (math.exp((-d1**2)/2))/(S*Sigma*math.sqrt(2*math.pi*T))
+        theta = -R*K*math.exp(-R*T)*norm.cdf(d2) - Sigma*S*norm.pdf(d1)/(2*math.sqrt(T))
+        vega = S*norm.pdf(d1)*math.sqrt(T)
+        rho = K*T*math.exp(-R*T)*norm.cdf(d2)
+        return print(f"Call Price = ${C:.3f}"), print(f"Delta = {delta:.3f}"), print(f"Gamma = {gamma:.3f}"), print(f"Theta = {theta:.3f}"), print(f"Vega = {vega:.3f}"), print(f"Rho = {rho:.3f}")
+    
+    # For Put 
+    elif Type == "Put":
+        P = -norm.cdf(-d1)*S + norm.cdf(-d2)*K*math.exp(-R*T)
+
+    # Put Greeks    
+        delta = -norm.cdf(-d1)
+        gamma = (math.exp((-d1**2)/2))/(S*Sigma*math.sqrt(2*math.pi*T))
+        theta = R*K*math.exp(-R*T)*norm.cdf(-d2) - Sigma*S*norm.pdf(d1)/(2*math.sqrt(T))
+        vega = S*norm.pdf(d1)*math.sqrt(T)
+        rho = -K*T*math.exp(-R*T)*norm.cdf(-d2)
+        return print(f"Put Price = ${P:.3f}"), print(f"Delta = {delta:.3f}"), print(f"Gamma = {gamma:.3f}"), print(f"Theta = {theta:.3f}"), print(f"Vega = {vega:.3f}"), print(f"Rho = {rho:.3f}")
+
+# Binomail Call or Put Tree
+# DO AMERICAN
+def BinT(U, D, S, K, R, T, Type):
+
+    # Creating Stock Tree
+    stock = np.zeros((T+1, T+1))
+    stock[0][0] = S
+    for j in range(T):    
+        for i in range(T): 
+            if stock[i][j] != 0:
+                stock[i][j+1] = stock[i][j]*U
+                stock[i+1][j+1] = stock[i][j]*D
+
+    # Risk Neutral Probabilites            
+    P = (1+R-D)/(U-D)
+    Q = 1-P        
+    
+    # For Call, Terminal Payoffs
+    if Type == "Call":
+        for i in range(T+1):
+            stock[i][T] = max(stock[i][T]-K, 0)
+
+    # Working Backwards
+        for j in range(-1,-T-1, -1):    
+            for i in range(-1,-T-1, -1):                  
+                stock[i-1][j-1] = (1/(1+R))*(stock[i][j]*Q + stock[i-1][j]*P)
+        return print(stock[0][0])
+
+    # For Put, Terminal Payoffs
+    elif Type == "Put":
+        for i in range(T+1):
+            stock[i][T] = max(-stock[i][T]+K, 0)
+    
+    # Working Backwards
+        for j in range(-1,-T-1, -1):    
+            for i in range(-1,-T-1, -1):                  
+                stock[i-1][j-1] = (1/(1+R))*(stock[i][j]*Q + stock[i-1][j]*P)
+        return print(stock[0][0])
+
+# Monte Carlo Call or Put Simulation
+# DO VARIANCE REDUCTION AND AMERICAN
+def Sim(S, K, T, Sigma, R, Trials, Type):
+
+    # Creating Dataframe
+    sim_table = np.zeros((Trials-1, 3))
+    df = pd.DataFrame(data = sim_table, columns = ["Stock Price", "Call", "Put"])
+
+    # Generating Stock Prices and Evaluating Call and Put Payoffs at Expiration
+    for i in range(Trials-1):
+        df.loc[i, "Stock Price"] = S*math.exp((R-.5*Sigma**2)*T+Sigma*math.sqrt(T)*norm.ppf(random()))
+        df.loc[i, "Call"] = max(df.loc[i, "Stock Price"]-K, 0)
+        df.loc[i, "Put"] = max(-df.loc[i, "Stock Price"]+K, 0)
+
+    # Valuing Options by Discounting Average Payoff
+    call = mean(df.loc[:, "Call"])*math.exp(-R*T)
+    put = mean(df.loc[:, "Put"])*math.exp(-R*T)
+
+    # Logic Operator Giving Desired Result
+    if Type == "Call":
+        return print(call)
+    elif Type == "Put": 
+        return print(put)
