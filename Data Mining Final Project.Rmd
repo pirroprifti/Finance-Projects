@@ -1,0 +1,114 @@
+---
+title: "R Notebook"
+output: "Data Mining Group Project"
+---
+```{r}
+#Loading in data, packages, and summary statistics
+
+library(caTools)
+library(ROCR)
+dat = read.csv("cardio_train.csv", stringsAsFactors = T, sep = ";")
+str(dat)
+head(dat)
+summary(dat)
+
+#Creating BMI variable
+dat$BMI = dat$weight/((dat$height/100)^2)
+
+```
+
+```{r}
+#Logistic Regression
+
+#Data split at 70%
+set.seed(123, sample.kind = "Rejection")
+spl = sample.split(dat$cardio, .7)
+train_set = dat[spl, ]
+test_set = dat[!spl, ]
+
+#Model 1 with all variables
+set.seed(123, sample.kind = "Rejection")
+model1 = glm(data = train_set, cardio ~ ., family = "binomial")
+summary(model1)
+
+#Model 2 removing insignificant variables
+set.seed(123, sample.kind = "Rejection")
+model2 = glm(data = train_set, cardio ~ . -id -gender -BMI, family = "binomial")
+summary(model2)
+
+#Model 3 removing height and weight due to BMI variable taking these factors into consideration
+set.seed(123, sample.kind = "Rejection")
+model3 = glm(data = train_set, cardio ~ . -height -weight -id, family = "binomial")
+summary(model3)
+
+```
+
+```{r}
+#Model 2 Evaluation
+
+test_set$p_hat2 = predict(newdata = test_set, model2, type = "response")
+test_set$y_hat2 = ifelse(test_set$p_hat2 > .5, 1, 0)
+
+#Confusion matrix and metrics
+matrix2 = table(Actual = test_set$cardio, predicted = test_set$y_hat2)
+Accuracy2 = (matrix2[1, 1] + matrix2[2, 2]) / sum(matrix2)
+Specificity2 = matrix2[1, 1] / sum(matrix2[1, ])
+Sensitivity2 = matrix2[2, 2] / sum(matrix2[2, ])
+
+#ROC
+roc.pred2 = prediction(test_set$p_hat2, test_set$cardio)
+perf2 = performance(roc.pred2, "tpr", "fpr")
+plot(perf2, main = "ROC Curve", xlab = "1-Specificity", ylab = "Sensitivity",
+     colorize = T)
+abline(0,1)
+
+#AUC
+auc2 = performance(roc.pred2, "auc")
+as.numeric(auc2@y.values)
+
+```
+
+```{r}
+#Model 3 Evaluation
+test_set$p_hat3 = predict(newdata = test_set, model3, type = "response")
+test_set$y_hat3 = ifelse(test_set$p_hat3 > .5, 1, 0)
+
+#Confusion matrix and metrics
+matrix3 = table(Actual = test_set$cardio, predicted = test_set$y_hat3)
+Accuracy3 = (matrix3[1, 1] + matrix3[2, 2]) / sum(matrix3)
+Specificity3 = matrix3[1, 1] / sum(matrix3[1, ])
+Sensitivity3 = matrix3[2, 2] / sum(matrix3[2, ])
+
+#ROC
+roc.pred3 = prediction(test_set$p_hat3, test_set$cardio)
+perf3 = performance(roc.pred3, "tpr", "fpr")
+plot(perf3, main = "ROC Curve", xlab = "1-Specificity", ylab = "Sensitivity", colorize = T)
+abline(0,1)
+
+#AUC
+auc3 = performance(roc.pred3, "auc")
+as.numeric(auc3@y.values)
+
+```
+
+
+```{r}
+#Model Optimization
+
+#Loss Matrix
+LossMatrix = matrix(c(0,1.5,1,0), nrow = 2, ncol = 2, byrow = F )
+p_bar = LossMatrix[1, 2] / (LossMatrix[1, 2] + LossMatrix[2, 1])
+
+#Incorporating new threshold
+test_set$new_y_hat3 = ifelse(test_set$p_hat3 > p_bar, 1, 0)
+
+#Confusion matrix and metrics
+new_matrix3 = table(Actual = test_set$cardio, predicted = test_set$new_y_hat3)
+new_Accuracy3 = (new_matrix3[1, 1] + new_matrix3[2, 2]) / sum(new_matrix3)
+new_Specificity3 = new_matrix3[1, 1] / sum(new_matrix3[1, ])
+new_Sensitivity3 = new_matrix3[2, 2] / sum(new_matrix3[2, ])
+
+```
+
+
+
